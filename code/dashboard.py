@@ -10,8 +10,10 @@ import streamlit as st
 from api import load_earthquakes
 
 
-DEFAULT_START_DATE = date(2014, 1, 1)
-DEFAULT_END_DATE = date(2014, 1, 2)
+TODAY = date.today()
+MIN_AVAILABLE_DATE = date(TODAY.year - 5, 1, 1)
+DEFAULT_START_DATE = TODAY - timedelta(days=30)
+DEFAULT_END_DATE = TODAY
 DEFAULT_MIN_MAGNITUDE = 6.0
 
 
@@ -37,7 +39,8 @@ def render_filters() -> tuple[date, date, float]:
         selected_dates = st.date_input(
             "Date range",
             value=(DEFAULT_START_DATE, DEFAULT_END_DATE),
-            max_value=date.today() + timedelta(days=1),
+            min_value=MIN_AVAILABLE_DATE,
+            max_value=TODAY,
         )
 
         if isinstance(selected_dates, tuple) and len(selected_dates) == 2:
