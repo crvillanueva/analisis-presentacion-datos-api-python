@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from typing import cast
 
 import pandas as pd
+import pydeck as pdk
 import requests
 import streamlit as st
 
@@ -83,12 +84,50 @@ def render_map(df: pd.DataFrame) -> None:
     if df.empty:
         return
 
-    st.map(
-        df,
-        latitude="latitude",
-        longitude="longitude",
-        size="marker_size",
-        color="#d95f02",
+    map_data = df.copy()
+    map_data["time_label"] = map_data["time"].dt.strftime("%Y-%m-%d %H:%M UTC")
+
+    midpoint = (
+        float(map_data["latitude"].mean()),
+        float(map_data["longitude"].mean()),
+    )
+
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=map_data,
+        get_position="[longitude, latitude]",
+        get_radius="marker_size * 1200",
+        get_fill_color=[217, 95, 2, 170],
+        get_line_color=[255, 255, 255],
+        line_width_min_pixels=1,
+        pickable=True,
+        auto_highlight=True,
+    )
+
+    st.pydeck_chart(
+        pdk.Deck(
+            map_style=None,
+            initial_view_state=pdk.ViewState(
+                latitude=midpoint[0],
+                longitude=midpoint[1],
+                zoom=1,
+                pitch=0,
+            ),
+            layers=[layer],
+            tooltip={
+                "html": (
+                    "<b>{title}</b><br/>"
+                    "Magnitude: {magnitude}<br/>"
+                    "Depth: {depth_km} km<br/>"
+                    "Time: {time_label}"
+                ),
+                "style": {
+                    "backgroundColor": "#1f2937",
+                    "color": "white",
+                    "fontFamily": "sans-serif",
+                },
+            },
+        ),
         use_container_width=True,
     )
 
