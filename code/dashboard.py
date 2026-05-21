@@ -132,6 +132,28 @@ def render_map(df: pd.DataFrame) -> None:
     )
 
 
+def render_magnitude_depth_chart(df: pd.DataFrame) -> None:
+    st.subheader("Magnitude vs Depth")
+    if df.empty:
+        return
+
+    chart_data = df.dropna(subset=["magnitude", "depth_km"])
+    if chart_data.empty:
+        st.info("No events with depth data found for the selected filters.")
+        return
+
+    st.scatter_chart(
+        chart_data,
+        x="magnitude",
+        y="depth_km",
+        x_label="Magnitude",
+        y_label="Depth (km)",
+        color="#d95f02",
+        size=80,
+        height=420,
+    )
+
+
 def render_table(df: pd.DataFrame) -> None:
     st.subheader("Events")
     if df.empty:
@@ -205,8 +227,18 @@ def main() -> None:
         return
 
     render_metrics(earthquakes)
-    render_map(earthquakes)
-    render_table(earthquakes)
+    map_tab, magnitude_depth_tab, events_tab = st.tabs(
+        ["Map", "Magnitude vs Depth", "Events"]
+    )
+
+    with map_tab:
+        render_map(earthquakes)
+
+    with magnitude_depth_tab:
+        render_magnitude_depth_chart(earthquakes)
+
+    with events_tab:
+        render_table(earthquakes)
 
 
 if __name__ == "__main__":
