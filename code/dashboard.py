@@ -154,6 +154,49 @@ def render_magnitude_depth_chart(df: pd.DataFrame) -> None:
     )
 
 
+def render_magnitude_event_count_chart(df: pd.DataFrame) -> None:
+    st.subheader("Events by Magnitude")
+    if df.empty:
+        return
+
+    chart_data = df.dropna(subset=["magnitude"])
+    if chart_data.empty:
+        st.info("No events with magnitude data found for the selected filters.")
+        return
+
+    lowest_magnitude = int(chart_data["magnitude"].min())
+    highest_magnitude = int(chart_data["magnitude"].max()) + 1
+    magnitude_edges = list(range(lowest_magnitude, highest_magnitude + 1))
+    magnitude_labels = [
+        f"{lower} <= M < {upper}"
+        for lower, upper in zip(
+            magnitude_edges[:-1], magnitude_edges[1:], strict=True
+        )
+    ]
+    magnitude_ranges = pd.cut(
+        chart_data["magnitude"],
+        bins=magnitude_edges,
+        labels=magnitude_labels,
+        right=False,
+    )
+    event_counts = (
+        magnitude_ranges.value_counts(sort=False)
+        .rename_axis("Magnitude range")
+        .reset_index(name="Events")
+    )
+
+    st.bar_chart(
+        event_counts,
+        x="Magnitude range",
+        y="Events",
+        x_label="Magnitude range",
+        y_label="Events",
+        color="#7570b3",
+        sort=False,
+        height=420,
+    )
+
+
 def render_table(df: pd.DataFrame) -> None:
     st.subheader("Events")
     if df.empty:
@@ -227,8 +270,8 @@ def main() -> None:
         return
 
     render_metrics(earthquakes)
-    map_tab, magnitude_depth_tab, events_tab = st.tabs(
-        ["Map", "Magnitude vs Depth", "Events"]
+    map_tab, magnitude_depth_tab, event_counts_tab, events_tab = st.tabs(
+        ["Map", "Magnitude vs Depth", "Events by Magnitude", "Events"]
     )
 
     with map_tab:
@@ -236,6 +279,9 @@ def main() -> None:
 
     with magnitude_depth_tab:
         render_magnitude_depth_chart(earthquakes)
+
+    with event_counts_tab:
+        render_magnitude_event_count_chart(earthquakes)
 
     with events_tab:
         render_table(earthquakes)
