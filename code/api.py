@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 from datetime import date
 from typing import Any
 
 import pandas as pd
 import requests
-
 
 USGS_EARTHQUAKE_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
 
