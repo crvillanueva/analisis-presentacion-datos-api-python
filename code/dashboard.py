@@ -5,80 +5,80 @@ import pandas as pd
 import pydeck as pdk
 import requests
 import streamlit as st
+from api import obtener_data_terremotos
 
-from api import load_earthquakes
-
-
-TODAY = date.today()
-MIN_AVAILABLE_DATE = date(TODAY.year - 5, 1, 1)
-DEFAULT_START_DATE = TODAY - timedelta(days=30)
-DEFAULT_END_DATE = TODAY
-DEFAULT_MIN_MAGNITUDE = 6.0
+fecha_hoy = date.today()
+fecha_minima_disponible = date(fecha_hoy.year - 5, 1, 1)
+fecha_inicio_defautl = fecha_hoy - timedelta(days=30)
+fecha_fin_default = fecha_hoy
+magnitud_minima_default = 6.0
 
 
 st.set_page_config(
-    page_title="USGS Earthquake Dashboard",
+    page_title="USGS Dashboard Terremotos",
     page_icon=":earth_americas:",
     layout="wide",
 )
 
 
 @st.cache_data(ttl=60 * 15, show_spinner=False)
-def cached_load_earthquakes(
-    start_date: date,
-    end_date: date,
-    min_magnitude: float,
-) -> pd.DataFrame:
-    return load_earthquakes(start_date, end_date, min_magnitude)
+def cache_obtener_data_terremotos(
+    fecha_inicio: date,
+    fecha_fin: date,
+    magnitud_min: float,
+):
+    return obtener_data_terremotos(fecha_inicio, fecha_fin, magnitud_min)
 
 
-def render_filters() -> tuple[date, date, float]:
+def mostrar_filtros() -> tuple[date, date, float]:
     with st.sidebar:
-        st.header("Filters")
+        st.header("Filtros")
         selected_dates = st.date_input(
-            "Date range",
-            value=(DEFAULT_START_DATE, DEFAULT_END_DATE),
-            min_value=MIN_AVAILABLE_DATE,
-            max_value=TODAY,
+            "Rango fecha",
+            value=(fecha_inicio_defautl, fecha_fin_default),
+            min_value=fecha_minima_disponible,
+            max_value=fecha_hoy,
         )
-
         if isinstance(selected_dates, tuple) and len(selected_dates) == 2:
-            start_date, end_date = cast(tuple[date, date], selected_dates)
+            fecha_inicio, fecha_fin = cast(tuple[date, date], selected_dates)
         else:
-            start_date = DEFAULT_START_DATE
-            end_date = DEFAULT_END_DATE
-            st.warning("Select a start and end date.")
+            fecha_inicio = fecha_inicio_defautl
+            fecha_fin = fecha_fin_default
+            st.warning("Se debe seleccionar fecha inicio y fecha fin.")
 
         min_magnitude = st.slider(
-            "Minimum magnitude",
+            "Magnitud mínima",
             min_value=0.0,
             max_value=10.0,
-            value=DEFAULT_MIN_MAGNITUDE,
+            value=magnitud_minima_default,
             step=0.1,
         )
+        st.caption("Fuente de datos: USGS API")
 
-        st.caption("Data source: USGS Earthquake Catalog API")
-
-    return start_date, end_date, min_magnitude
+    return fecha_inicio, fecha_fin, min_magnitude
 
 
-def render_metrics(df: pd.DataFrame) -> None:
+def mostrar_metricas(df: pd.DataFrame) -> None:
     if df.empty:
-        st.info("No earthquake events found for the selected filters.")
+        st.info("No se encontraron eventos para los filtros seleccionados.")
         return
 
-    strongest_event = df.loc[df["magnitude"].idxmax()]
-    deepest_event = df.loc[df["depth_km"].idxmax()]
+    magnitud_max = df.loc[df["magnitude"].idxmax()]
+    prof_max = df.loc[df["depth_km"].idxmax()]
 
     total_events, strongest, deepest, tsunami_events = st.columns(4)
-    total_events.metric("Events", f"{len(df):,}")
-    strongest.metric("Strongest", f"M {strongest_event['magnitude']:.1f}")
-    deepest.metric("Deepest", f"{deepest_event['depth_km']:.0f} km")
-    tsunami_events.metric("Tsunami alerts", f"{int(df['tsunami'].sum()):,}")
+    total_events.metric(label="Eventos", value=f"{len(df):,}")
+    strongest.metric(
+        label="Magnitud máxima", value=f"M {magnitud_max['magnitude']:.1f}"
+    )
+    deepest.metric(label="Profundidad máxima", value=f"{prof_max['depth_km']:.0f} km")
+    tsunami_events.metric(
+        label="Alertas de tsunami", value=f"{int(df['tsunami'].sum()):,}"
+    )
 
 
-def render_map(df: pd.DataFrame) -> None:
-    st.subheader("Earthquake Map")
+def graf_mapa(df: pd.DataFrame) -> None:
+    st.subheader("Mapa terremotos")
     if df.empty:
         return
 
@@ -115,9 +115,9 @@ def render_map(df: pd.DataFrame) -> None:
             tooltip={
                 "html": (
                     "<b>{title}</b><br/>"
-                    "Magnitude: {magnitude}<br/>"
-                    "Depth: {depth_km} km<br/>"
-                    "Time: {time_label}"
+                    "Magnitud: {magnitude}<br/>"
+                    "Profundidad: {depth_km} km<br/>"
+                    "Fecha: {time_label}"
                 ),
                 "style": {
                     "backgroundColor": "#1f2937",
@@ -130,72 +130,70 @@ def render_map(df: pd.DataFrame) -> None:
     )
 
 
-def render_magnitude_depth_chart(df: pd.DataFrame) -> None:
-    st.subheader("Magnitude vs Depth")
+def renderizar_graf_magnitud_vs_prof(df) -> None:
+    st.subheader("Magnitud vs Profundidad")
     if df.empty:
         return
 
     chart_data = df.dropna(subset=["magnitude", "depth_km"])
     if chart_data.empty:
-        st.info("No events with depth data found for the selected filters.")
+        st.info("Sin eventos con profundidad para los filtros seleccionados.")
         return
 
     st.scatter_chart(
         chart_data,
         x="magnitude",
         y="depth_km",
-        x_label="Magnitude",
-        y_label="Depth (km)",
+        x_label="Magnitud",
+        y_label="Profundidad (km)",
         color="#d95f02",
         size=80,
         height=420,
     )
 
 
-def render_magnitude_event_count_chart(df: pd.DataFrame) -> None:
-    st.subheader("Events by Magnitude")
+def renderizar_graf_magnitud_vs_n_eventos(df: pd.DataFrame) -> None:
+    st.subheader("N Eventos por magnitud")
     if df.empty:
         return
 
     chart_data = df.dropna(subset=["magnitude"])
     if chart_data.empty:
-        st.info("No events with magnitude data found for the selected filters.")
+        st.info("Sin eventos con datos de magnitud para los filtros seleccionados.")
         return
 
-    lowest_magnitude = int(chart_data["magnitude"].min())
-    highest_magnitude = int(chart_data["magnitude"].max()) + 1
-    magnitude_edges = list(range(lowest_magnitude, highest_magnitude + 1))
-    magnitude_labels = [
+    magnitud_mas_baja = int(chart_data["magnitude"].min())
+    magnitud_mas_alta = int(chart_data["magnitude"].max()) + 1
+    magnitud_bordes = list(range(magnitud_mas_baja, magnitud_mas_alta + 1))
+    magnitud_etiqueta = [
         f"{lower} <= M < {upper}"
-        for lower, upper in zip(
-            magnitude_edges[:-1], magnitude_edges[1:], strict=True
-        )
+        for lower, upper in zip(magnitud_bordes[:-1], magnitud_bordes[1:], strict=True)
     ]
-    magnitude_ranges = pd.cut(
+    rangos_magnitud = pd.cut(
         chart_data["magnitude"],
-        bins=magnitude_edges,
-        labels=magnitude_labels,
+        bins=magnitud_bordes,
+        labels=magnitud_etiqueta,
         right=False,
     )
-    event_counts = (
-        magnitude_ranges.value_counts(sort=False)
+    n_eventos = (
+        rangos_magnitud.value_counts(sort=False)
         .rename_axis("Magnitude range")
         .reset_index(name="Events")
     )
 
     st.bar_chart(
-        event_counts,
+        n_eventos,
         x="Magnitude range",
         y="Events",
-        x_label="Magnitude range",
-        y_label="Events",
+        x_label="Rango magnitud",
+        y_label="Eventos",
         color="#7570b3",
         sort=False,
         height=420,
     )
 
 
-def render_table(df: pd.DataFrame) -> None:
+def graf_tabla(df: pd.DataFrame) -> None:
     st.subheader("Events")
     if df.empty:
         return
@@ -239,50 +237,50 @@ def render_table(df: pd.DataFrame) -> None:
 
 
 def main() -> None:
-    st.title("USGS Earthquake Dashboard")
+    st.title("Dashboard Terremotos USGS")
     st.write(
-        "Visualize earthquake events from the USGS API with date and magnitude filters."
+        "Visualización de eventos desde la API de la USGS con filtros de fecha y magnitud."
     )
 
-    start_date, end_date, min_magnitude = render_filters()
+    fecha_inicio, fecha_fin, magnitud_min = mostrar_filtros()
 
-    if start_date > end_date:
-        st.error("The start date must be before or equal to the end date.")
+    if fecha_inicio > fecha_fin:
+        st.error("La fecha de inicio debe ser anterior a la fecha de fin.")
         return
 
     try:
-        with st.spinner("Loading earthquake events..."):
-            earthquakes = cached_load_earthquakes(
-                start_date=start_date,
-                end_date=end_date,
-                min_magnitude=min_magnitude,
+        with st.spinner("Cargando eventos..."):
+            earthquakes = cache_obtener_data_terremotos(
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                magnitud_min=magnitud_min,
             )
     except requests.HTTPError as exc:
-        st.error(f"The USGS API returned an error: {exc}")
+        st.error(f"La API entregó un error: {exc}")
         return
     except requests.RequestException as exc:
-        st.error(f"Could not connect to the USGS API: {exc}")
+        st.error(f"No fue posible conectarse a la API: {exc}")
         return
     except ValueError as exc:
         st.error(str(exc))
         return
 
-    render_metrics(earthquakes)
+    mostrar_metricas(earthquakes)
     map_tab, magnitude_depth_tab, event_counts_tab, events_tab = st.tabs(
-        ["Map", "Magnitude vs Depth", "Events by Magnitude", "Events"]
+        ["Mapa", "Magnitud vs Profundidad", "N Eventos por magnitud", "Eventos"]
     )
 
     with map_tab:
-        render_map(earthquakes)
+        graf_mapa(earthquakes)
 
     with magnitude_depth_tab:
-        render_magnitude_depth_chart(earthquakes)
+        renderizar_graf_magnitud_vs_prof(earthquakes)
 
     with event_counts_tab:
-        render_magnitude_event_count_chart(earthquakes)
+        renderizar_graf_magnitud_vs_n_eventos(earthquakes)
 
     with events_tab:
-        render_table(earthquakes)
+        graf_tabla(earthquakes)
 
 
 if __name__ == "__main__":

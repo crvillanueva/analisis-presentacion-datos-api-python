@@ -1,38 +1,44 @@
 from datetime import date
-from typing import Any
 
 import pandas as pd
 import requests
 
-USGS_EARTHQUAKE_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
 
+def get_api_data_terremotos(
+    fecha_inicio: date,
+    fecha_fin: date,
+    magnitud_min: float,
+):
+    """Obtiene datos de terremotos desde la API de USGS en formato JSON."""
 
-def fetch_earthquakes(
-    start_date: date,
-    end_date: date,
-    min_magnitude: float,
-) -> dict[str, Any]:
-    """Fetch earthquake events from the USGS GeoJSON API."""
-    if start_date > end_date:
-        msg = "start_date must be before or equal to end_date"
-        raise ValueError(msg)
+    if fecha_inicio > fecha_fin:
+        msg_error = (
+            "Error: La fecha de inicio no puede ser posterior a la fecha de fin."
+        )
+        raise ValueError(msg_error)
 
-    params: dict[str, str | float] = {
+    api_url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
+    params = {
         "format": "geojson",
-        "starttime": start_date.isoformat(),
-        "endtime": end_date.isoformat(),
-        "minmagnitude": min_magnitude,
+        # necesario ya que la API usa fechas en formato (YYYY-MM-DD)
+        "starttime": fecha_inicio.isoformat(),
+        "endtime": fecha_fin.isoformat(),
+        "minmagnitude": magnitud_min,
     }
 
-    response = requests.get(USGS_EARTHQUAKE_API_URL, params=params, timeout=30)
-    response.raise_for_status()
+    timeout_seconds = 30
+    response = requests.get(api_url, params=params, timeout=timeout_seconds)
+    # 200 = OK
+    if response.status_code != 200:
+        msg_error = f"Error al obtener datos de la API: {response.status_code} - {response.text}"
+        raise Exception(msg_error)
     return response.json()
 
 
-def earthquakes_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
-    """Convert the USGS GeoJSON response to a flat dataframe for Streamlit."""
-    rows: list[dict[str, Any]] = []
+def terremotos_a_dataframe(payload):
+    """Convierte la response de la API a un DataFrame."""
 
+    filas = []
     for feature in payload.get("features", []):
         properties = feature.get("properties") or {}
         geometry = feature.get("geometry") or {}
@@ -42,7 +48,7 @@ def earthquakes_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
         latitude = coordinates[1] if len(coordinates) > 1 else None
         depth_km = coordinates[2] if len(coordinates) > 2 else None
 
-        rows.append(
+        filas.append(
             {
                 "id": feature.get("id"),
                 "title": properties.get("title"),
@@ -62,7 +68,7 @@ def earthquakes_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
             }
         )
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(filas)
     if df.empty:
         return df
 
@@ -71,16 +77,17 @@ def earthquakes_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
     numeric_columns = ["magnitude", "longitude", "latitude", "depth_km"]
     df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors="coerce")
     df = df.dropna(subset=["latitude", "longitude", "magnitude"])
+    # nueva columna para el tamaño de los marcadores en el mapa, basada en la magnitud
     df["marker_size"] = (df["magnitude"] ** 3).round(1)
 
     return df.sort_values("time", ascending=False).reset_index(drop=True)
 
 
-def load_earthquakes(
-    start_date: date,
-    end_date: date,
-    min_magnitude: float,
+def obtener_data_terremotos(
+    fecha_inicio: date,
+    fecha_fin: date,
+    magnitud_min: float,
 ) -> pd.DataFrame:
-    """Fetch and prepare earthquake events for dashboard use."""
-    payload = fetch_earthquakes(start_date, end_date, min_magnitude)
-    return earthquakes_to_dataframe(payload)
+    """Obtener y preparar los eventos desde la API para uso por la dashboard."""
+    payload = get_api_data_terremotos(fecha_inicio, fecha_fin, magnitud_min)
+    return terremotos_a_dataframe(payload)
