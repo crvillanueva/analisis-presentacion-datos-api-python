@@ -155,6 +155,49 @@ Esto mejora la legibilidad porque permite leer el programa como una secuencia de
 obtener datos, mostrar filtros, calcular métricas y renderizar gráficos. Mientras más claro
 es el nombre, menos esfuerzo se necesita para entender qué hace cada parte.
 
+### Performance
+
+En aplicaciones interactivas, la performance no depende solo de que el código sea correcto,
+sino también de evitar repetir operaciones costosas cuando el resultado no ha cambiado.
+En este proyecto, una operación potencialmente costosa es consultar la API de USGS y
+transformar la respuesta en un `DataFrame` cada vez que Streamlit vuelve a ejecutar la
+aplicación.
+
+Para mejorar esto se usó la funcionalidad de cache de Streamlit con `st.cache_data`.
+Según la documentación de Streamlit, este decorador está pensado para funciones que
+retornan datos, como transformaciones de `DataFrame`, consultas a bases de datos o llamadas
+a servicios externos. Streamlit guarda el resultado de la función y lo reutiliza cuando se
+vuelve a llamar con los mismos argumentos.
+
+En `code/dashboard.py` se aplicó así:
+
+```python
+@st.cache_data(ttl=60 * 15, show_spinner=False)
+def cache_obtener_data_terremotos(
+    fecha_inicio: date,
+    fecha_fin: date,
+    magnitud_min: float,
+):
+    return obtener_data_terremotos(fecha_inicio, fecha_fin, magnitud_min)
+```
+
+Esto significa que si el usuario mantiene el mismo rango de fechas y la misma magnitud
+mínima, Streamlit puede reutilizar el resultado ya calculado en vez de volver a llamar la
+API inmediatamente.
+
+El parámetro `ttl=60 * 15` indica que el dato cacheado vive durante 15 minutos. Esto es útil
+porque los datos de terremotos pueden cambiar con el tiempo, pero no es necesario pedirlos
+otra vez en cada renderizado de la dashboard. El parámetro `show_spinner=False` evita mostrar
+un spinner propio del cache, ya que la aplicación ya maneja el estado de carga con
+`st.spinner("Cargando eventos...")`.
+
+Este tipo de cache ayuda a:
+
+- Reducir llamadas repetidas a la API externa.
+- Hacer más rápida la interacción cuando los filtros no cambian.
+- Evitar trabajo repetido de transformación de datos con pandas.
+- Disminuir la posibilidad de errores temporales por exceso de consultas o problemas de red.
+
 ### git y Github
 
 El despliegue de la aplicación nativo de streamlit requería una cuenta en [Github](https://github.com/).
@@ -185,4 +228,5 @@ directamente en el link del repositorio y que generalmente srive como documentac
 - https://developer.mozilla.org/es/docs/Web/HTTP/Reference/Methods
 - https://developer.mozilla.org/es/docs/Web/HTTP/Reference/Status
 - https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Query
+- https://docs.streamlit.io/develop/api-reference/caching-and-state/st.cache_data
 - https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app
