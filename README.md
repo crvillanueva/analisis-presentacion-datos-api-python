@@ -31,7 +31,7 @@ revisar la [documentación oficial de la API](https://earthquake.usgs.gov/fdsnws
 De este modo una _request_ como:
 
 ```http
-https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=2014-01-02&minmagnitude=6
+GET https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=2014-01-02&minmagnitude=6
 ```
 
 Entrega un resultado como:
@@ -185,6 +185,11 @@ desarrollo de aplicaciones web, entre los elementos usados en esta aplicación:
 De esta manera, al modificar los filtros de fecha o magnitud, Streamlit vuelve a
 ejecutar la consulta, procesa los datos y actualiza las visualizaciones.
 interactiva.
+
+## Aprendizajes
+
+Otros aprendizajes asociados al proyecto se anexan en el documento
+[aprendizajes.md](./aprendizajes.md) de este mismo repositorio.
 
 ## Código
 

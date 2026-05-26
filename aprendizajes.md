@@ -1,5 +1,3 @@
-# Análisis y presentación de datos utilizando API en Python
-
 ## Aprendizajes
 
 ### Requests HTTP
@@ -221,7 +219,7 @@ git push
 Estos comandos fueron indicados directamente luego de crear un nuevo repositorio en GitHub.
 
 En Github se creo además un archivo `README.md` correspondiente a un archivo que es mostrado
-directamente en el link del repositorio y que generalmente srive como documentación.
+directamente en el link del repositorio y que generalmente sirve como documentación.
 
 ## Referencias
 
