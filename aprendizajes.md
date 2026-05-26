@@ -52,9 +52,33 @@ response = requests.get(api_url, params=params, timeout=timeout_seconds)
 
 ### Formatos de texto
 
-Existen `JSON`, debido a que JSON es un formato extendido la librería _requests_ posee
-métodos exclusivos como `response.json()` para transformar los datos en este formato
-a un objecto nativo de _Python_ representado por un diccionario.
+Al trabajar con APIs también fue necesario comprender que la información puede viajar en
+distintos formatos de texto. Estos formatos definen cómo se estructura la información para
+que pueda ser enviada por internet, guardada en archivos o transformada por un programa.
+
+Uno de los formatos más usados es `JSON`, debido a que permite representar datos usando
+diccionarios, listas, textos, números y valores booleanos. En este proyecto la API de USGS
+entrega una respuesta en formato `GeoJSON`, que es una variante de `JSON` usada para datos
+geográficos.
+
+Debido a que `JSON` es un formato extendido, la librería _requests_ posee métodos exclusivos
+como `response.json()` para transformar los datos en este formato a un objecto nativo de
+_Python_ representado por un diccionario.
+
+```python
+payload = response.json()
+```
+
+Además, en el proyecto se usa `pandas` para convertir esos datos en una tabla o `DataFrame`,
+lo que permite trabajar con columnas como `magnitude`, `latitude`, `longitude` y `depth_km`.
+Esto muestra que los formatos de texto no son solo una forma de transportar información:
+también son el punto de entrada para transformar los datos en estructuras más útiles para
+analizar y visualizar.
+
+Otros formatos comunes son `CSV`, usado normalmente para tablas simples, `XML`, usado en
+algunas APIs y sistemas antiguos, y `HTML`, usado para representar páginas web. En este
+proyecto el formato más relevante fue `GeoJSON`, porque combina datos de eventos sísmicos
+con coordenadas necesarias para mostrarlos en un mapa.
 
 ### Lectura de documentación
 
@@ -101,12 +125,12 @@ más fácil comprender cómo llamar la función sin tener que revisar todo su co
 
 Otra mejora de calidad fue separar responsabilidades en archivos distintos. El archivo
 `code/api.py` contiene la lógica para llamar la API de USGS y transformar la respuesta en
-datos utilizables por la aplicación. En cambio, `code/dashboard.py` contiene la lógica de
-interfaz, filtros, métricas, gráficos y tabla de Streamlit.
+datos utilizables por la aplicación. Por otro lado, `code/dashboard.py` contiene la lógica de
+la interfaz gráfica, filtros, métricas, gráficos y tablas.
 
 Esta separación permite que cada archivo tenga un objetivo claro: si se necesita cambiar
 cómo se obtienen los datos, se revisa `code/api.py`; si se necesita cambiar cómo se muestran
-los datos, se revisa `code/dashboard.py`.
+los datos, se revisa `code/dashboard.py` y así también se evita tener un archivo con demasiadas líneas.
 
 #### Nombres representativos
 
