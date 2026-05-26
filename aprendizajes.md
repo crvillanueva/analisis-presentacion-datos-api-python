@@ -27,10 +27,10 @@ correctamente y así poder determinar si el servicio se encuentra funcionando co
 En el código esto se realizó revisando el atributo `status_code` de la respuesta:
 
 ```python
-response = requests.get(api_url, params=params, timeout=timeout_seconds)
+respuesta = requests.get(url_api, params=parametros, timeout=timeout_segundos)
 # 200 = OK
-if response.status_code != 200:
-    msg_error = f"Error al obtener datos de la API: {response.status_code} - {response.text}"
+if respuesta.status_code != 200:
+    msg_error = f"Error al obtener datos de la API: {respuesta.status_code} - {respuesta.text}"
     raise Exception(msg_error)
 ```
 
@@ -52,14 +52,14 @@ Y en el código:
 
 ```python
 # ...
-params = {
+parametros = {
     "format": "geojson",
-    "starttime": start_date.isoformat(),
-    "endtime": end_date.isoformat(),
-    "minmagnitude": min_magnitude,
+    "starttime": fecha_inicio.isoformat(),
+    "endtime": fecha_fin.isoformat(),
+    "minmagnitude": magnitud_min,
 }
 # ...
-response = requests.get(api_url, params=params, timeout=timeout_seconds)
+respuesta = requests.get(url_api, params=parametros, timeout=timeout_segundos)
 ```
 
 ### Formatos de texto
@@ -74,11 +74,11 @@ entrega una respuesta en formato `GeoJSON`, que es una variante de `JSON` usada 
 geográficos.
 
 Debido a que `JSON` es un formato extendido, la librería _requests_ posee métodos exclusivos
-como `response.json()` para transformar los datos en este formato a un objecto nativo de
+como `respuesta.json()` para transformar los datos en este formato a un objecto nativo de
 _Python_ representado por un diccionario.
 
 ```python
-payload = response.json()
+datos_api = respuesta.json()
 ```
 
 Además, en el proyecto se usa `pandas` para convertir esos datos en una tabla o `DataFrame`,
@@ -119,10 +119,10 @@ Python permite agregar anotaciones de tipo para indicar qué valores espera una 
 Esto no cambia directamente la ejecución del programa, pero ayuda a entender el código,
 detectar errores antes y usar mejor las ayudas del editor.
 
-Un ejemplo está en la función `get_api_data_terremotos` de `code/api.py`:
+Un ejemplo está en la función `obtener_datos_api_terremotos` de `code/api.py`:
 
 ```python
-def get_api_data_terremotos(
+def obtener_datos_api_terremotos(
     fecha_inicio: date,
     fecha_fin: date,
     magnitud_min: float,
@@ -147,7 +147,7 @@ los datos, se revisa `code/dashboard.py` y así también se evita tener un archi
 #### Nombres representativos
 
 Los nombres de variables y funciones también aportan a la calidad del código. Nombres como
-`fecha_inicio`, `fecha_fin`, `magnitud_min`, `obtener_data_terremotos`, `mostrar_filtros`
+`fecha_inicio`, `fecha_fin`, `magnitud_min`, `obtener_datos_terremotos`, `mostrar_filtros`
 y `renderizar_graf_magnitud_vs_n_eventos` comunican la intención del código sin depender
 solo de comentarios.
 
@@ -173,12 +173,12 @@ En `code/dashboard.py` se aplicó así:
 
 ```python
 @st.cache_data(ttl=60 * 15, show_spinner=False)
-def cache_obtener_data_terremotos(
+def obtener_datos_terremotos_cacheados(
     fecha_inicio: date,
     fecha_fin: date,
     magnitud_min: float,
 ):
-    return obtener_data_terremotos(fecha_inicio, fecha_fin, magnitud_min)
+    return obtener_datos_terremotos(fecha_inicio, fecha_fin, magnitud_min)
 ```
 
 Esto significa que si el usuario mantiene el mismo rango de fechas y la misma magnitud
