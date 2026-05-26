@@ -14,7 +14,7 @@ Todo esto con el objetivo de responder las preguntas: ¿Dónde se ubican geograf
 El proceso involucra a grandes rasgos las fases:
 
 1. Interacción con servicio externo para obtención de datos
-2. Transformación de los datos a estructuras de datos/objectos trabajables por Python para su análisis
+2. Transformación de los datos a estructuras de datos/objetos trabajables por Python para su análisis
 3. Visualización de los datos de manera interactiva
 
 
@@ -31,6 +31,25 @@ De este modo una _request_ como:
 https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=2014-01-02&minmagnitude=6
 ```
 
+En el código esta interacción se implementa con la librería
+[`requests`](https://requests.readthedocs.io/). En `code/api.py`, la función
+`get_api_data_terremotos` define los parámetros de búsqueda y ejecuta la llamada
+HTTP con `requests.get`:
+
+```python
+params = {
+    "format": "geojson",
+    "starttime": fecha_inicio.isoformat(),
+    "endtime": fecha_fin.isoformat(),
+    "minmagnitude": magnitud_min,
+}
+
+response = requests.get(api_url, params=params, timeout=timeout_seconds)
+```
+
+Luego se valida que la API responda con estado `200` y se retorna el contenido
+como JSON usando `response.json()`, para que pueda ser transformado y analizado
+por el resto de la aplicación.
 
 Entrega un resultado como:
 
@@ -90,6 +109,74 @@ Entrega un resultado como:
 }
 ```
 
+## Analisis de los datos
+
+El análisis de datos se realiza principalmente con
+[`pandas`](https://pandas.pydata.org/), que permite convertir la respuesta JSON
+de la API en una tabla trabajable por Python.
+
+En `code/api.py`, la función `terremotos_a_dataframe` recorre los eventos del
+campo `features`, extrae sus propiedades principales y crea un `DataFrame`:
+
+```python
+df = pd.DataFrame(filas)
+```
+
+Después se normalizan los datos para que sean útiles en la visualización:
+
+- `pd.to_datetime` convierte las fechas entregadas por la API en milisegundos a
+  fechas UTC.
+- `pd.to_numeric` transforma columnas como magnitud, latitud, longitud y
+  profundidad a valores numéricos.
+- `dropna` elimina eventos sin coordenadas o sin magnitud.
+- `sort_values` ordena los eventos desde el más reciente.
+- `marker_size` se calcula desde la magnitud para escalar los puntos del mapa.
+
+Un caso concreto de análisis está en `code/dashboard.py`, donde se determina el
+número de eventos para cada rango de magnitud. Primero se agrupan las magnitudes
+en intervalos con `pd.cut` y luego se cuentan los eventos de cada intervalo con
+`value_counts`:
+
+```python
+rangos_magnitud = pd.cut(
+    chart_data["magnitude"],
+    bins=magnitud_bordes,
+    labels=magnitud_etiqueta,
+    right=False,
+)
+n_eventos = (
+    rangos_magnitud.value_counts(sort=False)
+    .rename_axis("Magnitude range")
+    .reset_index(name="Events")
+)
+```
+
+El resultado es una tabla con dos columnas: el rango de magnitud y el número de
+eventos encontrados en ese rango. Esta tabla es la que después se usa para
+construir el gráfico de barras de eventos por magnitud.
+
+## Visualización de los datos de manera interactiva
+
+La visualización interactiva se construye principalmente con
+[`streamlit`](https://docs.streamlit.io/), que cumple el rol central en
+`code/dashboard.py`.
+
+Streamlit se usa para definir la página, los filtros, las métricas, las pestañas
+y los componentes visuales de la dashboard:
+
+- `st.sidebar` contiene los filtros de rango de fecha y magnitud mínima.
+- `st.metric` muestra indicadores como total de eventos, magnitud máxima,
+  profundidad máxima y alertas de tsunami.
+- `st.tabs` separa las vistas de mapa, gráfico de magnitud/profundidad, eventos
+  por magnitud y tabla de eventos.
+- `st.pydeck_chart` muestra los terremotos en un mapa interactivo.
+- `st.scatter_chart` muestra la relación entre magnitud y profundidad.
+- `st.bar_chart` visualiza el número de eventos por rango de magnitud.
+- `st.dataframe` presenta el detalle tabular de los eventos.
+
+De esta manera, al modificar los filtros de fecha o magnitud, Streamlit vuelve a
+ejecutar la consulta, procesa los datos y actualiza las visualizaciones de forma
+interactiva.
 
 ## Código
 
