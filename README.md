@@ -1,24 +1,27 @@
 # Análisis y presentación de datos utilizando API en Python
 
 En este proyecto se visualizan de manera geoespacial e interactiva los eventos de terremotos
-del mundo mediante un catálogo de datos puesto a disposición por la USGS (_United States Geological Survey_)
+del mundo a partir de un catálogo de datos puesto a disposición por la USGS (_United States Geological Survey_)
 consumido a través de una REST API que responde a llamadas web.
 
 El proyecto integra un mapa donde se disponen los eventos como puntos escalados según su magnitud.
 Ademas de gráficos para visualizar relaciones entre la magnitud y otras variables como la profundidad
 o el numero de eventos en rangos de tiempos y magnitud filtrables e interactivos.
 
-Todo esto con el objetivo de responder las preguntas: ¿Dónde se ubican geograficamente los terremotos?
-¿Existe alguna relación entre el numero de eventos o la profundidad y su magnitud?
+Todo esto con el objetivo de responder las preguntas: ¿Dónde se ubican geográficamente los terremotos?
+¿Existe alguna relación entre el número de eventos o la profundidad y su magnitud?
 
-El proceso involucra a grandes rasgos las fases:
+## Proceso
+
+El proceso para la visualización y análisis desde los datos crudos
+consiste de maneral generalizada en:
 
 1. Interacción con servicio externo para obtención de datos
-2. Transformación de los datos a estructuras de datos/objetos trabajables por Python para su análisis
-3. Visualización de los datos de manera interactiva
+2. Transformación de los datos a estructuras de datos/objetos trabajables por Python para y análisis
+3. Visualización interactiva
 
 
-## Interacción con servicio externo para obtención de datos
+### Interacción con servicio externo para obtención de datos
 
 Los datos provienen desde la API `https://earthquake.usgs.gov/fdsnws/event/1/query` la cual permite
 la parametrización de la fecha de inicio, fin y magnitud mínima de los eventos solicitados,
@@ -30,26 +33,6 @@ De este modo una _request_ como:
 ```http
 https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=2014-01-02&minmagnitude=6
 ```
-
-En el código esta interacción se implementa con la librería
-[`requests`](https://requests.readthedocs.io/). En `code/api.py`, la función
-`get_api_data_terremotos` define los parámetros de búsqueda y ejecuta la llamada
-HTTP con `requests.get`:
-
-```python
-params = {
-    "format": "geojson",
-    "starttime": fecha_inicio.isoformat(),
-    "endtime": fecha_fin.isoformat(),
-    "minmagnitude": magnitud_min,
-}
-
-response = requests.get(api_url, params=params, timeout=timeout_seconds)
-```
-
-Luego se valida que la API responda con estado `200` y se retorna el contenido
-como JSON usando `response.json()`, para que pueda ser transformado y analizado
-por el resto de la aplicación.
 
 Entrega un resultado como:
 
@@ -109,6 +92,26 @@ Entrega un resultado como:
 }
 ```
 
+En el código la interacción se implementa con la biblioteca
+[`requests`](https://requests.readthedocs.io/). En `code/api.py`, la función
+`get_api_data_terremotos` define los parámetros de búsqueda y ejecuta la llamada
+HTTP con `requests.get`:
+
+```python
+params = {
+    "format": "geojson",
+    "starttime": fecha_inicio.isoformat(),
+    "endtime": fecha_fin.isoformat(),
+    "minmagnitude": magnitud_min,
+}
+
+response = requests.get(api_url, params=params, timeout=timeout_seconds)
+```
+
+Luego se valida que la API responda con estado `200` y se retorna el contenido
+como JSON usando `response.json()`, para que pueda ser transformado y analizado
+por el resto de la aplicación.
+
 ## Analisis de los datos
 
 El análisis de datos se realiza principalmente con
@@ -155,14 +158,17 @@ El resultado es una tabla con dos columnas: el rango de magnitud y el número de
 eventos encontrados en ese rango. Esta tabla es la que después se usa para
 construir el gráfico de barras de eventos por magnitud.
 
-## Visualización de los datos de manera interactiva
+## Visualización interactiva
 
-La visualización interactiva se construye principalmente con
-[`streamlit`](https://docs.streamlit.io/), que cumple el rol central en
+La visualización se construye con la ayuda de
+[`streamlit`](https://docs.streamlit.io/), biblioteca que cumple el rol central en
 `code/dashboard.py`.
 
-Streamlit se usa para definir la página, los filtros, las métricas, las pestañas
-y los componentes visuales de la dashboard:
+_Streamlit_ se usa para definir la página, los filtros, las métricas, las pestañas
+y los componentes visuales de la dashboard.
+
+En particular _Streamlit_ posee widgets ya construidos que permiten el rápido
+desarrollo de aplicaciones web, entre los elementos usados en esta aplicación:
 
 - `st.sidebar` contiene los filtros de rango de fecha y magnitud mínima.
 - `st.metric` muestra indicadores como total de eventos, magnitud máxima,
@@ -174,8 +180,10 @@ y los componentes visuales de la dashboard:
 - `st.bar_chart` visualiza el número de eventos por rango de magnitud.
 - `st.dataframe` presenta el detalle tabular de los eventos.
 
+`st.pydeck_chart` fue requerido sobre la versión mas simple de `st.map` (https://docs.streamlit.io/develop/api-reference/charts/st.map) ya que esta no poseía la funcionalidad de un _hover_ personalizado.
+
 De esta manera, al modificar los filtros de fecha o magnitud, Streamlit vuelve a
-ejecutar la consulta, procesa los datos y actualiza las visualizaciones de forma
+ejecutar la consulta, procesa los datos y actualiza las visualizaciones.
 interactiva.
 
 ## Código
@@ -203,6 +211,10 @@ ejecutar la aplicación de manera local.
 ```bash
 pip install -r requirements.txt
 ```
+
+*Nota: Considerar que el proyecto se desarrollo en `Python 3.14`.
+Otras versiones podrían no ser compatibles con las versiones de las
+librerías de este proyecto
 
 2. Ejecutar el servidor de la aplicación streamlit:
 
