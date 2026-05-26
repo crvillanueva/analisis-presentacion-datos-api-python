@@ -94,22 +94,22 @@ Entrega un resultado como:
 
 En el código la interacción se implementa con la biblioteca
 [`requests`](https://requests.readthedocs.io/). En `code/api.py`, la función
-`get_api_data_terremotos` define los parámetros de búsqueda y ejecuta la llamada
+`obtener_datos_api_terremotos` define los parámetros de búsqueda y ejecuta la llamada
 HTTP con `requests.get`:
 
 ```python
-params = {
+parametros = {
     "format": "geojson",
     "starttime": fecha_inicio.isoformat(),
     "endtime": fecha_fin.isoformat(),
     "minmagnitude": magnitud_min,
 }
 
-response = requests.get(api_url, params=params, timeout=timeout_seconds)
+respuesta = requests.get(url_api, params=parametros, timeout=timeout_segundos)
 ```
 
 Luego se valida que la API responda con estado `200` y se retorna el contenido
-como JSON usando `response.json()`, para que pueda ser transformado y analizado
+como JSON usando `respuesta.json()`, para que pueda ser transformado y analizado
 por el resto de la aplicación.
 
 ## Analisis de los datos
@@ -142,7 +142,7 @@ en intervalos con `pd.cut` y luego se cuentan los eventos de cada intervalo con
 
 ```python
 rangos_magnitud = pd.cut(
-    chart_data["magnitude"],
+    df_grafico["magnitude"],
     bins=magnitud_bordes,
     labels=magnitud_etiqueta,
     right=False,
@@ -194,9 +194,9 @@ interactiva.
 code/ -> Carpeta que contiene todo el código necesario para ejecutar la aplicación
 code/api.py -> Logica asociada al consumo de datos desde la API
 code/dashboard.py -> Visualización e interacción de los datos obtenidos
-requirements.txt -> Librerias necesarias para poder ejecutar el proyecto
+requirements.txt -> Listado de librerías necesarias para poder ejecutar el proyecto
 README.md -> Documentación principal del proyecto
-docs/aprendizajes.md -> Documentación dedicada a nuevos conceptos aprendidos
+aprendizajes.md -> Documentación dedicada a nuevos conceptos aprendidos
 ```
 
 El código vive en `code/api.py` y `code/dashboard.py`
