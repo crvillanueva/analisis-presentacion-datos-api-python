@@ -11,6 +11,10 @@ o el numero de eventos en rangos de tiempos y magnitud filtrables e interactivos
 Todo esto con el objetivo de responder las preguntas: ¿Dónde se ubican geográficamente los terremotos?
 ¿Existe alguna relación entre el número de eventos o la profundidad y su magnitud?
 
+## Links
+
+La aplicación esta desplegada en: https://dashboardpy-sismos.streamlit.app/
+
 ## Proceso
 
 El proceso para la visualización y análisis desde los datos crudos
