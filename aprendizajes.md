@@ -72,6 +72,53 @@ para la visualización web y para la forma de desplegar la aplicación.
 el método HTTP a realizar, paso de _query parameters_ a partir de un diccionario
 - https://pandas.pydata.org/docs/: Usado para determinar
 
+### Calidad de Codigo
+
+Durante el desarrollo también fue importante aplicar prácticas que mejoran la legibilidad,
+mantención y revisión del código.
+
+#### Sistema de `typing`
+
+Python permite agregar anotaciones de tipo para indicar qué valores espera una función.
+Esto no cambia directamente la ejecución del programa, pero ayuda a entender el código,
+detectar errores antes y usar mejor las ayudas del editor.
+
+Un ejemplo está en la función `get_api_data_terremotos` de `code/api.py`:
+
+```python
+def get_api_data_terremotos(
+    fecha_inicio: date,
+    fecha_fin: date,
+    magnitud_min: float,
+):
+```
+
+En este caso, las anotaciones indican que `fecha_inicio` y `fecha_fin` deben ser fechas
+(`date`), mientras que `magnitud_min` debe ser un número decimal (`float`). Con esto es
+más fácil comprender cómo llamar la función sin tener que revisar todo su contenido.
+
+#### Separación de código en archivos
+
+Otra mejora de calidad fue separar responsabilidades en archivos distintos. El archivo
+`code/api.py` contiene la lógica para llamar la API de USGS y transformar la respuesta en
+datos utilizables por la aplicación. En cambio, `code/dashboard.py` contiene la lógica de
+interfaz, filtros, métricas, gráficos y tabla de Streamlit.
+
+Esta separación permite que cada archivo tenga un objetivo claro: si se necesita cambiar
+cómo se obtienen los datos, se revisa `code/api.py`; si se necesita cambiar cómo se muestran
+los datos, se revisa `code/dashboard.py`.
+
+#### Nombres representativos
+
+Los nombres de variables y funciones también aportan a la calidad del código. Nombres como
+`fecha_inicio`, `fecha_fin`, `magnitud_min`, `obtener_data_terremotos`, `mostrar_filtros`
+y `renderizar_graf_magnitud_vs_n_eventos` comunican la intención del código sin depender
+solo de comentarios.
+
+Esto mejora la legibilidad porque permite leer el programa como una secuencia de acciones:
+obtener datos, mostrar filtros, calcular métricas y renderizar gráficos. Mientras más claro
+es el nombre, menos esfuerzo se necesita para entender qué hace cada parte.
+
 ### git y Github
 
 El despliegue de la aplicación nativo de streamlit requería una cuenta en [Github](https://github.com/).
@@ -91,6 +138,8 @@ git remote add <github_repo_link>
 ```
 git push
 ```
+
+Estos comandos fueron indicados directamente luego de crear un nuevo repositorio en GitHub.
 
 En Github se creo además un archivo `README.md` correspondiente a un archivo que es mostrado
 directamente en el link del repositorio y que generalmente srive como documentación.
