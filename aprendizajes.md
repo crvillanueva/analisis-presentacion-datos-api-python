@@ -7,10 +7,8 @@
 Para obtener los datos fue necesario "llamar" servicios externos (en particular la API de la USGS),
 en el proceso fue necesario comprender conceptos como:
 
-### Requests y responses
-
-Una _request_ es un mensaje, petición o llamada enviada a un servidor;
-una _response_ por otro lado es la _respuesta_ del server.
+_request_: es un mensaje, petición o llamada enviada a un servidor
+_response_: la _respuesta_ del server
 
 #### Métodos de petición HTTP
 
@@ -25,6 +23,20 @@ Los códigos de estado de respuesta HTTP indican si se ha completado satisfactor
 Algunos comunes como `200 OK` o `404 Not Found` pueden indicar si la solicitud fue exitosa o erronéa.
 Para el caso de la aplicación fue necesario determinar si la _request_ hasta la API de la USGS se llevo a cabo
 correctamente y así poder determinar si el servicio se encuentra funcionando correctamente.
+
+En el código esto se realizó revisando el atributo `status_code` de la respuesta:
+
+```python
+response = requests.get(api_url, params=params, timeout=timeout_seconds)
+# 200 = OK
+if response.status_code != 200:
+    msg_error = f"Error al obtener datos de la API: {response.status_code} - {response.text}"
+    raise Exception(msg_error)
+```
+
+Si el código recibido es distinto a `200`, la función detiene el flujo normal y levanta un
+error con información de la respuesta. Esto permite detectar problemas como una URL
+incorrecta, parámetros inválidos o fallas temporales del servicio externo.
 
 ### Query parameters
 
