@@ -1,0 +1,1 @@
+Incluyen documentación adecuada del código y un informe que explica el desafío, el conjunto de datos seleccionado, el proceso desarrollado (código Python y desarrollo de la aplicación) y los hallazgos y aprendizajes obtenidos.
