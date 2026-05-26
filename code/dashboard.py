@@ -5,13 +5,13 @@ import pandas as pd
 import pydeck as pdk
 import requests
 import streamlit as st
-from api import obtener_data_terremotos
+from api import obtener_datos_terremotos
 
 fecha_hoy = date.today()
 fecha_minima_disponible = date(fecha_hoy.year - 5, 1, 1)
-fecha_inicio_defautl = fecha_hoy - timedelta(days=30)
-fecha_fin_default = fecha_hoy
-magnitud_minima_default = 6.0
+fecha_inicio_defecto = fecha_hoy - timedelta(days=30)
+fecha_fin_defecto = fecha_hoy
+magnitud_minima_defecto = 6.0
 
 
 st.set_page_config(
@@ -22,40 +22,40 @@ st.set_page_config(
 
 
 @st.cache_data(ttl=60 * 15, show_spinner=False)
-def cache_obtener_data_terremotos(
+def obtener_datos_terremotos_cacheados(
     fecha_inicio: date,
     fecha_fin: date,
     magnitud_min: float,
 ):
-    return obtener_data_terremotos(fecha_inicio, fecha_fin, magnitud_min)
+    return obtener_datos_terremotos(fecha_inicio, fecha_fin, magnitud_min)
 
 
 def mostrar_filtros() -> tuple[date, date, float]:
     with st.sidebar:
         st.header("Filtros")
-        selected_dates = st.date_input(
+        fechas_seleccionadas = st.date_input(
             "Rango fecha",
-            value=(fecha_inicio_defautl, fecha_fin_default),
+            value=(fecha_inicio_defecto, fecha_fin_defecto),
             min_value=fecha_minima_disponible,
             max_value=fecha_hoy,
         )
-        if isinstance(selected_dates, tuple) and len(selected_dates) == 2:
-            fecha_inicio, fecha_fin = cast(tuple[date, date], selected_dates)
+        if isinstance(fechas_seleccionadas, tuple) and len(fechas_seleccionadas) == 2:
+            fecha_inicio, fecha_fin = cast(tuple[date, date], fechas_seleccionadas)
         else:
-            fecha_inicio = fecha_inicio_defautl
-            fecha_fin = fecha_fin_default
+            fecha_inicio = fecha_inicio_defecto
+            fecha_fin = fecha_fin_defecto
             st.warning("Se debe seleccionar fecha inicio y fecha fin.")
 
-        min_magnitude = st.slider(
+        magnitud_minima = st.slider(
             "Magnitud mínima",
             min_value=0.0,
             max_value=10.0,
-            value=magnitud_minima_default,
+            value=magnitud_minima_defecto,
             step=0.1,
         )
         st.caption("Fuente de datos: USGS API")
 
-    return fecha_inicio, fecha_fin, min_magnitude
+    return fecha_inicio, fecha_fin, magnitud_minima
 
 
 def mostrar_metricas(df: pd.DataFrame) -> None:
@@ -66,13 +66,17 @@ def mostrar_metricas(df: pd.DataFrame) -> None:
     magnitud_max = df.loc[df["magnitude"].idxmax()]
     prof_max = df.loc[df["depth_km"].idxmax()]
 
-    total_events, strongest, deepest, tsunami_events = st.columns(4)
-    total_events.metric(label="Eventos", value=f"{len(df):,}")
-    strongest.metric(
+    columna_total, columna_magnitud, columna_profundidad, columna_tsunami = st.columns(
+        4
+    )
+    columna_total.metric(label="Eventos", value=f"{len(df):,}")
+    columna_magnitud.metric(
         label="Magnitud máxima", value=f"M {magnitud_max['magnitude']:.1f}"
     )
-    deepest.metric(label="Profundidad máxima", value=f"{prof_max['depth_km']:.0f} km")
-    tsunami_events.metric(
+    columna_profundidad.metric(
+        label="Profundidad máxima", value=f"{prof_max['depth_km']:.0f} km"
+    )
+    columna_tsunami.metric(
         label="Alertas de tsunami", value=f"{int(df['tsunami'].sum()):,}"
     )
 
@@ -82,17 +86,17 @@ def graf_mapa(df: pd.DataFrame) -> None:
     if df.empty:
         return
 
-    map_data = df.copy()
-    map_data["time_label"] = map_data["time"].dt.strftime("%Y-%m-%d %H:%M UTC")
+    df_mapa = df.copy()
+    df_mapa["time_label"] = df_mapa["time"].dt.strftime("%Y-%m-%d %H:%M UTC")
 
-    midpoint = (
-        float(map_data["latitude"].mean()),
-        float(map_data["longitude"].mean()),
+    punto_medio = (
+        float(df_mapa["latitude"].mean()),
+        float(df_mapa["longitude"].mean()),
     )
 
-    layer = pdk.Layer(
+    capa = pdk.Layer(
         "ScatterplotLayer",
-        data=map_data,
+        data=df_mapa,
         get_position="[longitude, latitude]",
         get_radius="marker_size * 1200",
         get_fill_color=[217, 95, 2, 170],
@@ -106,12 +110,12 @@ def graf_mapa(df: pd.DataFrame) -> None:
         pdk.Deck(
             map_style=None,
             initial_view_state=pdk.ViewState(
-                latitude=midpoint[0],
-                longitude=midpoint[1],
+                latitude=punto_medio[0],
+                longitude=punto_medio[1],
                 zoom=1,
                 pitch=0,
             ),
-            layers=[layer],
+            layers=[capa],
             tooltip={
                 "html": (
                     "<b>{title}</b><br/>"
@@ -130,18 +134,18 @@ def graf_mapa(df: pd.DataFrame) -> None:
     )
 
 
-def renderizar_graf_magnitud_vs_prof(df) -> None:
+def renderizar_graf_magnitud_vs_prof(df: pd.DataFrame) -> None:
     st.subheader("Magnitud vs Profundidad")
     if df.empty:
         return
 
-    chart_data = df.dropna(subset=["magnitude", "depth_km"])
-    if chart_data.empty:
+    df_grafico = df.dropna(subset=["magnitude", "depth_km"])
+    if df_grafico.empty:
         st.info("Sin eventos con profundidad para los filtros seleccionados.")
         return
 
     st.scatter_chart(
-        chart_data,
+        df_grafico,
         x="magnitude",
         y="depth_km",
         x_label="Magnitud",
@@ -157,20 +161,22 @@ def renderizar_graf_magnitud_vs_n_eventos(df: pd.DataFrame) -> None:
     if df.empty:
         return
 
-    chart_data = df.dropna(subset=["magnitude"])
-    if chart_data.empty:
+    df_grafico = df.dropna(subset=["magnitude"])
+    if df_grafico.empty:
         st.info("Sin eventos con datos de magnitud para los filtros seleccionados.")
         return
 
-    magnitud_mas_baja = int(chart_data["magnitude"].min())
-    magnitud_mas_alta = int(chart_data["magnitude"].max()) + 1
+    magnitud_mas_baja = int(df_grafico["magnitude"].min())
+    magnitud_mas_alta = int(df_grafico["magnitude"].max()) + 1
     magnitud_bordes = list(range(magnitud_mas_baja, magnitud_mas_alta + 1))
     magnitud_etiqueta = [
-        f"{lower} <= M < {upper}"
-        for lower, upper in zip(magnitud_bordes[:-1], magnitud_bordes[1:], strict=True)
+        f"{limite_inferior} <= M < {limite_superior}"
+        for limite_inferior, limite_superior in zip(
+            magnitud_bordes[:-1], magnitud_bordes[1:], strict=True
+        )
     ]
     rangos_magnitud = pd.cut(
-        chart_data["magnitude"],
+        df_grafico["magnitude"],
         bins=magnitud_bordes,
         labels=magnitud_etiqueta,
         right=False,
@@ -198,7 +204,7 @@ def graf_tabla(df: pd.DataFrame) -> None:
     if df.empty:
         return
 
-    table = df[
+    tabla = df[
         [
             "time",
             "magnitude",
@@ -223,7 +229,7 @@ def graf_tabla(df: pd.DataFrame) -> None:
     )
 
     st.dataframe(
-        table,
+        tabla,
         hide_index=True,
         use_container_width=True,
         column_config={
@@ -250,7 +256,7 @@ def main() -> None:
 
     try:
         with st.spinner("Cargando eventos..."):
-            earthquakes = cache_obtener_data_terremotos(
+            df_terremotos = obtener_datos_terremotos_cacheados(
                 fecha_inicio=fecha_inicio,
                 fecha_fin=fecha_fin,
                 magnitud_min=magnitud_min,
@@ -265,22 +271,22 @@ def main() -> None:
         st.error(str(exc))
         return
 
-    mostrar_metricas(earthquakes)
-    map_tab, magnitude_depth_tab, event_counts_tab, events_tab = st.tabs(
+    mostrar_metricas(df_terremotos)
+    tab_mapa, tab_magnitud_profundidad, tab_conteo_eventos, tab_eventos = st.tabs(
         ["Mapa", "Magnitud vs Profundidad", "N Eventos por magnitud", "Eventos"]
     )
 
-    with map_tab:
-        graf_mapa(earthquakes)
+    with tab_mapa:
+        graf_mapa(df_terremotos)
 
-    with magnitude_depth_tab:
-        renderizar_graf_magnitud_vs_prof(earthquakes)
+    with tab_magnitud_profundidad:
+        renderizar_graf_magnitud_vs_prof(df_terremotos)
 
-    with event_counts_tab:
-        renderizar_graf_magnitud_vs_n_eventos(earthquakes)
+    with tab_conteo_eventos:
+        renderizar_graf_magnitud_vs_n_eventos(df_terremotos)
 
-    with events_tab:
-        graf_tabla(earthquakes)
+    with tab_eventos:
+        graf_tabla(df_terremotos)
 
 
 if __name__ == "__main__":
